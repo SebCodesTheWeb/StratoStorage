@@ -1,18 +1,7 @@
 import React from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Box, Line } from '@react-three/drei'
-import {
-  pipe,
-  map,
-  identity,
-  zipWith,
-  add,
-  slice,
-  __,
-  zip,
-  flatten,
-  chain,
-} from 'ramda'
+import { zipWith, add, slice, dec } from 'ramda'
 
 const Cube: React.FC = () => {
   return (
@@ -91,8 +80,6 @@ const getRectangleLines = (offsets: number[], points: number[][]) => {
     points[index + 1],
   ])
 
-  console.log({ lines })
-
   const offsetedRectangleLines = lines.map((line) =>
     line.map((point) => vecAdd(point, offsets))
   )
@@ -102,10 +89,12 @@ const getRectangleLines = (offsets: number[], points: number[][]) => {
 
 const DataCenter: React.FC = () => {
   const baseOffset = [0, 0, 0]
-  const rectangleDimensions = [50, 30]
+  const rectangleWidth = 3
+  const rectangleLength = 2
+  const rectangleDimensions = [rectangleWidth, rectangleLength]
   const boxLines: number[][][] = []
-  const numLayers = 10
-  const layersDistance = 5
+  const numLayers = 5 
+  const layersDistance = 1
 
   for (let i = 0; i < numLayers; i++) {
     const offset = vecAdd(baseOffset, [0, i * layersDistance, 0])
@@ -119,20 +108,21 @@ const DataCenter: React.FC = () => {
     })
   }
 
+  const sideHeight = dec(numLayers) * layersDistance
   const sideOne = getRectangleLines(baseOffset, [
     [0, 0, 0],
-    [50, 0, 0],
-    [50, 9 * layersDistance, 0],
-    [0, 9 * layersDistance, 0],
+    [rectangleWidth, 0, 0],
+    [rectangleWidth, sideHeight, 0],
+    [0, sideHeight, 0],
     [0, 0, 0],
   ])
   const sideTwo = getRectangleLines(
-    [0, 0, 30],
+    [0, 0, rectangleLength],
     [
       [0, 0, 0],
-      [50, 0, 0],
-      [50, 9 * layersDistance, 0],
-      [0, 9 * layersDistance, 0],
+      [rectangleWidth, 0, 0],
+      [rectangleWidth, sideHeight, 0],
+      [0, sideHeight, 0],
       [0, 0, 0],
     ]
   )
@@ -152,47 +142,67 @@ const DataCenter: React.FC = () => {
   )
 }
 
-const getAdjustedAngle = (angle: number): number => {
-  const modAngle = (angle % 2) * Math.PI
-  switch (true) {
-    case modAngle < Math.PI / 2:
-      return modAngle
-    case modAngle > Math.PI / 2 && modAngle < Math.PI:
-      return Math.PI - modAngle
-    case modAngle > Math.PI && modAngle < (3 * Math.PI) / 2:
-      return modAngle - Math.PI
-    case modAngle > (3 * Math.PI) / 2 && modAngle < 2 * Math.PI:
-      return 2 * Math.PI - modAngle
-    default:
-      throw new Error('Could not find appropiate angle')
-  }
-}
-
-const getInclinedPlanePoints = (
-  baseOffset: number[],
-  rectangleWidth: number,
-  rectangleLength: number,
+const getInclinedPlanePoints = ({
+  baseOffset,
+  rectangleWidth,
+  rectangleLength,
+  angle,
+}: {
+  baseOffset: number[]
+  rectangleWidth: number
+  rectangleLength: number
   angle: number
-) => {
+}) => {
+  const calibratedAngle = angle
+  const newHeight = Math.sin(calibratedAngle) * rectangleLength
+  const newLength = Math.cos(calibratedAngle) * rectangleLength
   const points: number[][] = [
     [0, 0, 0],
     [rectangleWidth, 0, 0],
+    [rectangleWidth, newHeight, newLength],
+    [0, newHeight, newLength],
+    [0, 0, 0],
   ]
-  if (angle < Math.PI / 2) {
-    const newHeight = Math.sin(angle) * rectangleLength
-    const newLength = Math.cos(angle) * rectangleLength
-    points.push([rectangleWidth, newHeight, newLength])
-    points.push([0, newHeight, newLength])
-  }
+
+  const offsettedPoints = points.map((point) => vecAdd(point, baseOffset))
+
+  return offsettedPoints
 }
 
 const GiganticWheel = () => {
+  let baseOffset: number[] = [-25, -3, 0]
   const radii = 100
-  const thiccness = 20
-  const numberOfSegmentsX = 4
-  const numberOfSegmentsZ = 50
+  const thiccness = 50
+  const numberOfSegmentsX = 20 
+  const numberOfSegmentsZ = 100
   const rectangleWidth = thiccness / numberOfSegmentsX
   const rectangleLength = (2 * Math.PI * radii) / numberOfSegmentsZ
+  const wheelLines: number[][][] = []
+
+  for (let j = 0; j < numberOfSegmentsX; j++) {
+    const horizontalOffset = [j * rectangleWidth, 0, 0]
+    for (let i = 0; i < numberOfSegmentsZ; i++) {
+      const angle = (i * 2 * Math.PI) / numberOfSegmentsZ
+      const rectanglePoints = getInclinedPlanePoints({
+        baseOffset: baseOffset,
+        rectangleWidth,
+        rectangleLength,
+        angle,
+      })
+      const rectangleLines = getRectangleLines([0, 0, 0], rectanglePoints)
+
+      rectangleLines.forEach((line) => wheelLines.push(line.map((point) => vecAdd(point, horizontalOffset))))
+      baseOffset = rectanglePoints[3]
+    }
+  }
+
+  return (
+    <group>
+      {wheelLines.map((line, index) => (
+        <Line key={index} points={line} lineWidth={1} color='green' />
+      ))}
+    </group>
+  )
 }
 
 const App: React.FC = () => {
@@ -202,6 +212,7 @@ const App: React.FC = () => {
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} />
         <DataCenter />
+        <GiganticWheel />
         <OrbitControls />
       </Canvas>
     </div>
