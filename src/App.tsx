@@ -1,16 +1,15 @@
 import React from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Box, Line } from '@react-three/drei'
+import { OrbitControls, Line } from '@react-three/drei'
 import { zipWith, add, slice, dec } from 'ramda'
+import { dotProduct } from './utils/dot-product'
+import { transposeMatrix } from './utils/transpose-matrix'
 
-const Cube: React.FC = () => {
-  return (
-    <Box args={[1, 1, 1]}>
-      <meshStandardMaterial color='royalblue' />
-    </Box>
-  )
-}
-
+const rotationMatrix = (v: number) => [
+  [Math.cos(v), Math.sin(v), 0],
+  [-Math.sin(v), Math.cos(v), 0],
+  [0, 0, 0],
+]
 const vecAdd = zipWith<number, number, number>(add)
 
 const getRectangleLayer = (
@@ -93,7 +92,7 @@ const DataCenter: React.FC = () => {
   const rectangleLength = 2
   const rectangleDimensions = [rectangleWidth, rectangleLength]
   const boxLines: number[][][] = []
-  const numLayers = 5 
+  const numLayers = 5
   const layersDistance = 1
 
   for (let i = 0; i < numLayers; i++) {
@@ -173,7 +172,7 @@ const GiganticWheel = () => {
   let baseOffset: number[] = [-25, -3, 0]
   const radii = 100
   const thiccness = 50
-  const numberOfSegmentsX = 20 
+  const numberOfSegmentsX = 20
   const numberOfSegmentsZ = 100
   const rectangleWidth = thiccness / numberOfSegmentsX
   const rectangleLength = (2 * Math.PI * radii) / numberOfSegmentsZ
@@ -191,7 +190,9 @@ const GiganticWheel = () => {
       })
       const rectangleLines = getRectangleLines([0, 0, 0], rectanglePoints)
 
-      rectangleLines.forEach((line) => wheelLines.push(line.map((point) => vecAdd(point, horizontalOffset))))
+      rectangleLines.forEach((line) =>
+        wheelLines.push(line.map((point) => vecAdd(point, horizontalOffset)))
+      )
       baseOffset = rectanglePoints[3]
     }
   }
