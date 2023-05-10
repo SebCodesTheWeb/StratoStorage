@@ -4,12 +4,21 @@ import { OrbitControls, Line } from '@react-three/drei'
 import { zipWith, add, slice, dec } from 'ramda'
 import { dotProduct } from './utils/dot-product'
 import { transposeMatrix } from './utils/transpose-matrix'
+import { transformLines } from './utils/transform-lines'
+import { vectorTransformation } from './utils/vector-transformation'
+
+// const rotationMatrix = (v: number) => [
+//   [Math.cos(v), 0, -Math.sin(v)],
+//   [0, 1, 0],
+//   [Math.sin(v), 0, Math.cos(v)],
+// ]
 
 const rotationMatrix = (v: number) => [
-  [Math.cos(v), Math.sin(v), 0],
-  [-Math.sin(v), Math.cos(v), 0],
-  [0, 0, 0],
+  [1, 0, 0],
+  [0, Math.cos(v), Math.sin(v)],
+  [0, Math.sin(v) * -1, Math.cos(v)]
 ]
+
 const vecAdd = zipWith<number, number, number>(add)
 
 const getRectangleLayer = (
@@ -94,6 +103,14 @@ const DataCenter: React.FC = () => {
   const boxLines: number[][][] = []
   const numLayers = 5
   const layersDistance = 1
+  const [angle, setAngle] = React.useState<number>(0)
+
+
+  React.useEffect(() => {
+    setInterval(() => {
+      setAngle((prev) => prev + 0.01)
+    }, 100)
+  }, [])
 
   for (let i = 0; i < numLayers; i++) {
     const offset = vecAdd(baseOffset, [0, i * layersDistance, 0])
@@ -132,9 +149,11 @@ const DataCenter: React.FC = () => {
     boxLines.push(line)
   })
 
+  const rotatedBoxLines = transformLines(boxLines, rotationMatrix(Math.PI))
+
   return (
     <group>
-      {boxLines.map((line, index) => (
+      {rotatedBoxLines.map((line, index) => (
         <Line key={index} points={line} lineWidth={1} color='blue' />
       ))}
     </group>

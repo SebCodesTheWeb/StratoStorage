@@ -30,14 +30,24 @@ describe('matrixMultiplication', () => {
     const rotationMatrix = () => [
       [2, 0, 0],
       [0, 2, 0],
-      [0, 0, 2]
+      [0, 0, 2],
     ]
 
-    const rotatedMatrix = matrixMultiplication(
-      baseVector,
-      rotationMatrix()
-    )
+    const rotatedMatrix = matrixMultiplication(baseVector, rotationMatrix())
 
     expect(rotatedMatrix).to.deep.equal([[2, 0, 0]])
+  })
+
+  it('Can handles this matrix', () => {
+    const matrix1 = [[1, 2, 3]]
+    const matrix2 = [
+      [1, 4, 7],
+      [2, 5, 8],
+      [3, 6, 9],
+    ]
+
+    const result = matrixMultiplication(matrix1, matrix2)
+
+    expect(result).to.deep.equal([[14, 32, 50]])
   })
 })
