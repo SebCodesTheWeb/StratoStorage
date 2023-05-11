@@ -1,23 +1,7 @@
 import React from 'react'
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Line } from '@react-three/drei'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Line, PointerLockControls } from '@react-three/drei'
 import { zipWith, add, slice, dec } from 'ramda'
-import { dotProduct } from './utils/dot-product'
-import { transposeMatrix } from './utils/transpose-matrix'
-import { transformLines } from './utils/transform-lines'
-import { vectorTransformation } from './utils/vector-transformation'
-
-// const rotationMatrix = (v: number) => [
-//   [Math.cos(v), 0, -Math.sin(v)],
-//   [0, 1, 0],
-//   [Math.sin(v), 0, Math.cos(v)],
-// ]
-
-const rotationMatrix = (v: number) => [
-  [1, 0, 0],
-  [0, Math.cos(v), Math.sin(v)],
-  [0, Math.sin(v) * -1, Math.cos(v)]
-]
 
 const vecAdd = zipWith<number, number, number>(add)
 
@@ -52,36 +36,6 @@ const getRectangleLayer = (
   return offsetedRectangleLines
 }
 
-const getVerticalRectangleLayer = (offsets: number[], dimensions: number[]) => {
-  const xLength = dimensions[0]
-  const yLength = dimensions[1]
-
-  const lineOne = [
-    [0, 0, 0],
-    [0, yLength, 0],
-  ]
-  const lineTwo = [
-    [0, yLength, 0],
-    [xLength, yLength, 0],
-  ]
-  const lineThree = [
-    [xLength, yLength, 0],
-    [xLength, 0, 0],
-  ]
-  const lineFour = [
-    [xLength, 0, 0],
-    [0, 0, 0],
-  ]
-
-  const rectangleLines = [lineOne, lineTwo, lineThree, lineFour]
-
-  const offsetedRectangleLines = rectangleLines.map((line) =>
-    line.map((point) => vecAdd(point, offsets))
-  )
-
-  return offsetedRectangleLines
-}
-
 const getRectangleLines = (offsets: number[], points: number[][]) => {
   const lines = slice(0, -1, points).map((point, index) => [
     point,
@@ -103,14 +57,6 @@ const DataCenter: React.FC = () => {
   const boxLines: number[][][] = []
   const numLayers = 5
   const layersDistance = 1
-  const [angle, setAngle] = React.useState<number>(0)
-
-
-  React.useEffect(() => {
-    setInterval(() => {
-      setAngle((prev) => prev + 0.01)
-    }, 100)
-  }, [])
 
   for (let i = 0; i < numLayers; i++) {
     const offset = vecAdd(baseOffset, [0, i * layersDistance, 0])
@@ -149,11 +95,9 @@ const DataCenter: React.FC = () => {
     boxLines.push(line)
   })
 
-  const rotatedBoxLines = transformLines(boxLines, rotationMatrix(Math.PI))
-
   return (
     <group>
-      {rotatedBoxLines.map((line, index) => (
+      {boxLines.map((line, index) => (
         <Line key={index} points={line} lineWidth={1} color='blue' />
       ))}
     </group>
@@ -187,16 +131,16 @@ const getInclinedPlanePoints = ({
   return offsettedPoints
 }
 
-const GiganticWheel = () => {
-  let baseOffset: number[] = [-25, -3, 0]
-  const radii = 100
-  const thiccness = 50
-  const numberOfSegmentsX = 20
-  const numberOfSegmentsZ = 100
-  const rectangleWidth = thiccness / numberOfSegmentsX
-  const rectangleLength = (2 * Math.PI * radii) / numberOfSegmentsZ
-  const wheelLines: number[][][] = []
+let baseOffset: number[] = [-25, -100, 0]
+const radii = 100
+const thiccness = 50
+const numberOfSegmentsX = 20
+const numberOfSegmentsZ = 100
+const rectangleWidth = thiccness / numberOfSegmentsX
+const rectangleLength = (2 * Math.PI * radii) / numberOfSegmentsZ
 
+const linesFunc = () => {
+  const wheelLines: number[][][] = []
   for (let j = 0; j < numberOfSegmentsX; j++) {
     const horizontalOffset = [j * rectangleWidth, 0, 0]
     for (let i = 0; i < numberOfSegmentsZ; i++) {
@@ -216,9 +160,28 @@ const GiganticWheel = () => {
     }
   }
 
+  return wheelLines
+}
+
+const lines = linesFunc()
+
+const GiganticWheel = () => {
+  const groupRef = React.useRef(null)
+  const { camera } = useThree()
+  camera.lookAt(80, 20, 3000)
+  camera.updateProjectionMatrix()
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return
+    const elapsed = clock.getElapsedTime()
+    const rotationSpeed = 5
+    const rotationAmount = (((elapsed * rotationSpeed) % 360) * Math.PI) / 180 // Convert to radians
+    groupRef.current.rotation.x = rotationAmount
+  })
+
   return (
-    <group>
-      {wheelLines.map((line, index) => (
+    <group ref={groupRef}>
+      {lines.map((line, index) => (
         <Line key={index} points={line} lineWidth={1} color='green' />
       ))}
     </group>
@@ -228,12 +191,12 @@ const GiganticWheel = () => {
 const App: React.FC = () => {
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
-      <Canvas camera={{ position: [2, 2, 5], fov: 50 }}>
+      <Canvas camera={{ position: [0, -98, 0], fov: 50 }}>
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} />
         <DataCenter />
         <GiganticWheel />
-        <OrbitControls />
+        <PointerLockControls />
       </Canvas>
     </div>
   )
